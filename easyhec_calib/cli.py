@@ -7,6 +7,7 @@ import sys
 import numpy as np
 
 from .data import load_dataset
+from .overlay import render_overlays
 from .refine import refine
 from .viz import MaskDiffViz
 
@@ -95,14 +96,54 @@ def _refine_cmd(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_overlay_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--data_dir", required=True)
+    p.add_argument("--urdf", required=True)
+    p.add_argument("--pose", required=True,
+                   help="Path to a 4x4 cam-in-world .npy file.")
+    p.add_argument("--output_dir", default=None,
+                   help="Directory to write *.overlay.png. Defaults to writing "
+                        "next to each input frame.")
+    p.add_argument("--alpha", type=float, default=0.5,
+                   help="Peak overlay opacity in [0, 1].")
+    p.add_argument("--exclude_link_prefixes", default="",
+                   help="Comma-separated link-name prefixes to drop from the URDF mesh set.")
+
+
+def _overlay_cmd(args: argparse.Namespace) -> int:
+    cam_in_world = np.load(args.pose)
+    if cam_in_world.shape != (4, 4):
+        raise SystemExit(f"--pose must be a 4x4 matrix; got {cam_in_world.shape}.")
+    excludes = tuple(s for s in args.exclude_link_prefixes.split(",") if s)
+    written = render_overlays(
+        data_dir=args.data_dir,
+        urdf_path=args.urdf,
+        cam_in_world=cam_in_world,
+        output_dir=args.output_dir,
+        alpha=args.alpha,
+        exclude_link_prefixes=excludes,
+    )
+    print(f"Wrote {len(written)} overlay(s):")
+    for p in written:
+        print(f"  {p}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="easyhec-calib")
     sub = ap.add_subparsers(dest="cmd", required=True)
     refine_p = sub.add_parser("refine", help="Refine a camera extrinsic.")
     _add_refine_args(refine_p)
+    overlay_p = sub.add_parser(
+        "overlay",
+        help="Render red semi-transparent URDF overlays at a given cam-in-world pose.",
+    )
+    _add_overlay_args(overlay_p)
     args = ap.parse_args(argv)
     if args.cmd == "refine":
         return _refine_cmd(args)
+    if args.cmd == "overlay":
+        return _overlay_cmd(args)
     return 1
 
 
