@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "easyhec-calib"
+version = "0.1.0"
+description = "Standalone hand-eye camera calibration around simple-easyhec."
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "opencv-python",
+  "trimesh",
+  "urchin",
+  "easyhec @ git+https://github.com/StoneT2000/simple-easyhec.git",
+]
+
+[project.optional-dependencies]
+sam2 = [
+  "sam2",
+  "huggingface_hub"
+]
+
+[project.scripts]
+easyhec-calib = "easyhec_calib.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["easyhec_calib*"]
